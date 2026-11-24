@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Choose Login | BookHub{% endblock %}
+{% block page_heading %}Choose Login{% endblock %}
+
+{% block content %}
+<div class="panel form-panel" style="max-width: 480px; margin: 40px auto; text-align: center;">
+    <h1>Welcome to BookHub</h1>
+    <p class="muted">Choose how you want to sign in.</p>
+    <div class="form-actions" style="justify-content: center;">
+        <a href="{% url 'user_login' %}" class="btn btn-primary">User Login</a>
+        <a href="{% url 'admin_login' %}" class="btn btn-light">Admin Login</a>
+    </div>
+</div>
+{% endblock %}

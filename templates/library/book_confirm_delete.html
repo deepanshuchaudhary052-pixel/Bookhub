@@ -1,0 +1,29 @@
+
+{% extends "base.html" %}
+
+{% block title %}Delete Book | BookHub{% endblock %}
+{% block page_heading %}Delete Book{% endblock %}
+
+{% block content %}
+<div class="panel confirm-panel">
+    <div class="stat-icon orange">!</div>
+    <h1>Delete this book?</h1>
+    <p>
+        You are about to delete <strong>{{ book.title }}</strong>
+        (ISBN: {{ book.isbn }}).
+    </p>
+    <p class="muted">
+        This action cannot be undone. Related loan records may prevent deletion.
+    </p>
+
+    <form method="post" class="form-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+            Yes, Delete Book
+        </button>
+        <a href="{% url 'book_list' %}" class="btn btn-light">
+            Cancel
+        </a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,270 @@
+
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard | BookHub{% endblock %}
+{% block page_heading %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="welcome-row">
+    <div>
+        <h1>Welcome to BookHub</h1>
+        <p class="muted">Manage your library and review its activity.</p>
+    </div>
+    <a href="{% url 'book_create' %}" class="btn btn-primary">
+        + Add New Book
+    </a>
+    {% if user.is_staff %}
+        {% if user.is_superuser %}
+            <a href="{% url 'admin_user_create' %}" class="btn btn-light">
+                + Add Admin User
+            </a>
+        {% endif %}
+        <a href="{% url 'member_user_create' %}" class="btn btn-light">
+            + Add User
+        </a>
+    {% endif %}
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-icon purple">▤</span>
+        <p>Total Books</p>
+        <h2>{{ total_books }}</h2>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon blue">✎</span>
+        <p>Total Authors</p>
+        <h2>{{ total_authors }}</h2>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon orange">▧</span>
+        <p>Categories</p>
+        <h2>{{ total_categories }}</h2>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon green">♙</span>
+        <p>Members</p>
+        <h2>{{ total_members }}</h2>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon blue">↗</span>
+        <p>Students Who Borrowed</p>
+        <h2>{{ students_with_loans }}</h2>
+        <p class="muted">Unique students with loan history</p>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon orange">▣</span>
+        <p>Students Borrowing Now</p>
+        <h2>{{ active_students }}</h2>
+        <p class="muted">Students with at least one unreturned book</p>
+    </div>
+</div>
+
+<div class="panel" id="borrow-requests">
+    <div class="panel-heading">
+        <div>
+            <h3>Borrow Requests</h3>
+            <p class="muted">{{ pending_request_count }} request{{ pending_request_count|pluralize }} waiting for review.</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Requested</th>
+                    <th>Unreserved Copies</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for borrow_request in pending_requests %}
+                <tr>
+                    <td>
+                        <strong>{{ borrow_request.member.name }}</strong>
+                        <small class="table-subtitle">{{ borrow_request.member.email }}</small>
+                    </td>
+                    <td>{{ borrow_request.book.title }}</td>
+                    <td>{{ borrow_request.requested_at|date:"M j, Y" }}</td>
+                    <td>{{ borrow_request.available_quantity }}</td>
+                    <td>
+                        <div class="action-group">
+                            <form method="post" action="{% url 'review_borrow_request' borrow_request.pk 'approve' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-small btn-primary">Approve</button>
+                            </form>
+                            <form method="post" action="{% url 'review_borrow_request' borrow_request.pk 'reject' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-small btn-danger">Reject</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">There are no pending borrow requests.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel" id="currently-borrowed">
+    <div class="panel-heading">
+        <div>
+            <h3>Currently Borrowed Books</h3>
+            <p class="muted">Mark a book returned to make a copy available again.</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Book</th>
+                    <th>Issued</th>
+                    <th>Due</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in active_loans_list %}
+                <tr>
+                    <td>{{ loan.member.name }}</td>
+                    <td>{{ loan.book.title }}</td>
+                    <td>{{ loan.issue_date|date:"M j, Y" }}</td>
+                    <td>
+                        {% if loan.due_date < today %}
+                            <span class="loan-status overdue">{{ loan.due_date|date:"M j, Y" }} · Overdue</span>
+                        {% else %}
+                            {{ loan.due_date|date:"M j, Y" }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'return_loan' loan.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-small btn-light">Mark returned</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">No books are currently checked out.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Student Book Access</h3>
+            <p class="muted">Books ranked by the number of unique students who have borrowed them.</p>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Author</th>
+                    <th>Students Borrowed</th>
+                    <th>Currently Issued</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book in popular_books %}
+                <tr>
+                    <td>
+                        <strong>{{ book.title }}</strong>
+                        <small class="table-subtitle">{{ book.isbn }}</small>
+                    </td>
+                    <td>{{ book.author.name }}</td>
+                    <td><strong>{{ book.student_count }}</strong></td>
+                    <td>{{ book.active_loan_count }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="empty-state">
+                        No books have been borrowed yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Recently Added Books</h3>
+            <p class="muted">Your latest library inventory</p>
+        </div>
+        <a href="{% url 'book_list' %}" class="btn btn-light">
+            View All
+        </a>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Author</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book in recent_books %}
+                <tr>
+                    <td>
+                        <strong>{{ book.title }}</strong>
+                        <small class="table-subtitle">{{ book.isbn }}</small>
+                    </td>
+                    <td>{{ book.author.name }}</td>
+                    <td><span class="category-tag">
+                        {{ book.category.name }}
+                    </span></td>
+                    <td>₹{{ book.price }}</td>
+                    <td>{{ book.quantity }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        No books added yet.
+                        <a href="{% url 'book_create' %}">Add your first book</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="stats-grid secondary-stats">
+    <div class="stat-card">
+        <p>Currently Issued</p>
+        <h2>{{ issued_books }}</h2>
+        <p class="muted">Unreturned loan records</p>
+    </div>
+    <div class="stat-card">
+        <p>Overdue Loans</p>
+        <h2>{{ overdue_loans }}</h2>
+        <p class="muted">Unreturned books past their due date</p>
+    </div>
+    <div class="stat-card">
+        <p>Quick Action</p>
+        <a href="{% url 'book_list' %}" class="btn btn-light">
+            Search Library →
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account | BookHub{% endblock %}
+{% block page_heading %}Create Account{% endblock %}
+
+{% block content %}
+<div class="panel form-panel" style="max-width: 560px; margin: 40px auto;">
+    <h1>Create your account</h1>
+    <p class="muted">Register to access your library account, loans, and due dates.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="field-group" style="margin-bottom: 18px;">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <small class="muted">{{ field.help_text }}</small>
+                {% endif %}
+                {% for error in field.errors %}
+                    <small class="field-error">{{ error }}</small>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        {% if form.non_field_errors %}
+            <div class="alert error">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+            Create Account
+        </button>
+    </form>
+
+    <p class="muted" style="margin: 20px 0 0; text-align: center;">
+        Already registered? <a href="{% url 'user_login' %}">User Login</a>
+    </p>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | BookHub{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="welcome-row">
+    <div>
+        <h1>{{ page_title }}</h1>
+        <p class="muted">Enter the book details below.</p>
+    </div>
+    <a href="{% url 'book_list' %}" class="btn btn-light">
+        ← Back to Books
+    </a>
+</div>
+
+<div class="panel form-panel">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="form-grid">
+            {% for field in form %}
+            <div class="field-group
+                {% if field.name == 'description' or field.name == 'cover' %}
+                    full-width
+                {% endif %}">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+
+                {% if field.name == "author_name" %}
+                    <datalist id="author-options">
+                        {% for author in form.author_options %}
+                            <option value="{{ author.name }}">
+                        {% endfor %}
+                    </datalist>
+                {% elif field.name == "category_name" %}
+                    <datalist id="category-options">
+                        {% for category in form.category_options %}
+                            <option value="{{ category.name }}">
+                        {% endfor %}
+                    </datalist>
+                {% endif %}
+
+                {% if field.help_text %}
+                    <small class="muted">{{ field.help_text }}</small>
+                {% endif %}
+
+                {% for error in field.errors %}
+                    <small class="field-error">{{ error }}</small>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                Save Book
+            </button>
+            <a href="{% url 'book_list' %}" class="btn btn-light">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard | BookHub{% endblock %}
+{% block page_heading %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="welcome-row">
+    <div>
+        <h1>Welcome, {{ member.name }}</h1>
+        <p class="muted">Keep track of your borrowed books and due dates.</p>
+    </div>
+    <div class="student-dashboard-tools">
+        <div class="student-clock-card"
+             data-clock-timestamp="{{ clock_timestamp }}"
+             data-timezone="{{ display_timezone }}"
+             {% if next_due_at %}data-next-due="{{ next_due_at }}"{% endif %}>
+            <strong id="student-clock-time" class="student-clock-time">
+                {% now "g:i:s A" %}
+            </strong>
+            <span id="student-clock-date" class="student-clock-date">
+                {% now "l, F j, Y" %}
+            </span>
+            {% if next_due_loan %}
+                <span class="student-countdown-label">
+                    Time left to return {{ next_due_loan.book.title }}
+                </span>
+                <strong id="student-loan-countdown"
+                        class="student-loan-countdown"
+                        aria-live="polite"></strong>
+                <span class="student-due-date">
+                    Due by {{ next_due_loan.due_date|date:"M j, Y" }}
+                </span>
+            {% else %}
+                <span class="student-countdown-label">No books currently on loan</span>
+            {% endif %}
+        </div>
+        <a href="{% url 'book_list' %}" class="btn btn-primary">
+            Browse Books
+        </a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-icon purple">▤</span>
+        <p>Books Borrowed</p>
+        <h2>{{ active_loan_count }}</h2>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon orange">◷</span>
+        <p>Overdue Loans</p>
+        <h2>{{ overdue_loans }}</h2>
+    </div>
+    <div class="stat-card">
+        <span class="stat-icon green">✓</span>
+        <p>Titles Available</p>
+        <h2>{{ available_titles }}</h2>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Your Borrow Requests</h3>
+            <p class="muted">Track the status of your requests reviewed by library staff.</p>
+        </div>
+        <a href="{% url 'book_list' %}" class="btn btn-light">Browse Books</a>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Requested</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for borrow_request in borrow_requests %}
+                <tr>
+                    <td>{{ borrow_request.book.title }}</td>
+                    <td>{{ borrow_request.requested_at|date:"M j, Y" }}</td>
+                    <td>
+                        {% if borrow_request.status == "pending" %}
+                            <span class="loan-status pending">Pending approval</span>
+                        {% elif borrow_request.status == "approved" %}
+                            <span class="loan-status current">Approved</span>
+                        {% else %}
+                            <span class="loan-status overdue">Declined</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="empty-state">You have no borrow requests.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Your Current Loans</h3>
+            <p class="muted">Return books by their due date to avoid overdue loans.</p>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Author</th>
+                    <th>Issue Date</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan in active_loans %}
+                <tr>
+                    <td><strong>{{ loan.book.title }}</strong></td>
+                    <td>{{ loan.book.author.name }}</td>
+                    <td>{{ loan.issue_date|date:"M j, Y" }}</td>
+                    <td>{{ loan.due_date|date:"M j, Y" }}</td>
+                    <td>
+                        {% if loan.due_date < today %}
+                            <span class="loan-status overdue">Overdue</span>
+                        {% else %}
+                            <span class="loan-status current">On loan</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        You have no books checked out.
+                        <a href="{% url 'book_list' %}">Browse the collection</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    (() => {
+        const clock = document.querySelector(".student-clock-card");
+        const timeElement = document.getElementById("student-clock-time");
+        const dateElement = document.getElementById("student-clock-date");
+        const countdownElement = document.getElementById("student-loan-countdown");
+        const timezone = clock.dataset.timezone;
+        const startedAt = Number(clock.dataset.clockTimestamp);
+        const browserStartedAt = Date.now();
+        const timeFormatter = new Intl.DateTimeFormat("en-US", {
+            timeZone: timezone,
+            timeStyle: "medium",
+        });
+        const dateFormatter = new Intl.DateTimeFormat("en-US", {
+            timeZone: timezone,
+            dateStyle: "full",
+        });
+        const dueAt = clock.dataset.nextDue
+            ? new Date(clock.dataset.nextDue).getTime()
+            : null;
+
+        function updateDashboardClock() {
+            const now = new Date(startedAt + Date.now() - browserStartedAt);
+            timeElement.textContent = timeFormatter.format(now);
+            dateElement.textContent = dateFormatter.format(now);
+
+            if (countdownElement && dueAt !== null) {
+                const remaining = dueAt - now.getTime();
+                const seconds = Math.floor(Math.abs(remaining) / 1000);
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const leftoverSeconds = seconds % 60;
+                const duration = `${days}d ${String(hours).padStart(2, "0")}h `
+                    + `${String(minutes).padStart(2, "0")}m `
+                    + `${String(leftoverSeconds).padStart(2, "0")}s`;
+                countdownElement.textContent = remaining < 0
+                    ? `Overdue by ${duration}`
+                    : duration;
+                countdownElement.classList.toggle("is-overdue", remaining < 0);
+            }
+        }
+
+        updateDashboardClock();
+        window.setInterval(updateDashboardClock, 1000);
+    })();
+</script>
+{% endblock %}
