@@ -80,5 +80,5 @@ Run the test suite with:
 python manage.py test
 ```
 
-The project uses SQLite for Django test runs; normal application runs use the
+The project uses MSSQL for Django test runs; normal application runs use the
 configured SQL Server database.
